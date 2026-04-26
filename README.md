@@ -9,7 +9,7 @@ See the v1 design doc on the engineering kickoff issue for the product and archi
 - **Runtime:** TypeScript on Next.js 15 (App Router) — UI + API in one repo, one deploy
 - **UI:** React 19 + Tailwind v4
 - **Datastore:** Postgres + Drizzle ORM
-- **LLM:** Anthropic Claude (real adapter wired in a follow-up; v1 backend uses a deterministic in-process fixture adapter)
+- **LLM:** Anthropic Claude via `@anthropic-ai/sdk` (Sonnet 4.6 for extract/draft, Haiku 4.5 for qualify) behind the `LLM_ADAPTER=anthropic` flag; the default `LLM_ADAPTER=fixture` uses a deterministic in-process adapter so CI and integration tests are hermetic
 - **Tests:** Vitest (unit + integration); Playwright is added in SWE-5
 - **Lint/format:** Biome
 - **CI:** GitHub Actions (with a Postgres service container)

@@ -27,6 +27,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "drizzle-orm": "^0.45.2",
     "next": "15.5.15",
     "postgres": "^3.4.9",
