@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:up": "pnpm db:up && pnpm db:migrate && pnpm db:seed && pnpm dev",
     "build": "next build",
     "start": "next start",
     "lint": "biome check .",
@@ -16,13 +17,21 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "prepare": "husky"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "next": "15.5.15",
+    "postgres": "^3.4.9",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -30,9 +39,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^2.1.9"
   },
