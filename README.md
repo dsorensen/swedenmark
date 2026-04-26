@@ -172,6 +172,48 @@ pnpm test:e2e
 CI runs it against the production build (`pnpm build && pnpm next start`) so it
 exercises the same code path as a deployed app.
 
+## Internal demo (Vercel + Neon)
+
+The always-on internal demo lives on Vercel, talks to a free-tier Neon
+Postgres, and is fronted by HTTP Basic auth so the URL is not crawlable.
+Auth on the *product* itself is still a v1 non-goal — Basic auth here is
+purely a "don't index me" wrapper.
+
+### URL + credentials
+
+| Field | Where it lives |
+| --- | --- |
+| Demo URL | TBD — pasted into the SWE-10 thread once the first prod deploy lands |
+| Basic-auth user | `demo` (default; overridable via `DEMO_BASIC_AUTH_USER`) |
+| Basic-auth password | Stored in Vercel env as `DEMO_BASIC_AUTH_PASSWORD`. Rotate via `vercel env rm` + `vercel env add`. |
+
+Do not paste the password into Slack threads or external docs — the issue
+comment thread is the single source of truth.
+
+### Vercel project env vars
+
+| Var | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Neon **pooled** connection string (the one ending in `-pooler.<region>.aws.neon.tech`). The app uses `postgres-js` with `prepare: false`, which is Neon's pooler requirement. |
+| `LLM_ADAPTER` | `fixture` for the always-on demo so it costs zero and stays deterministic. Switch to `anthropic` only with `ANTHROPIC_API_KEY` set. |
+| `ANTHROPIC_API_KEY` | Optional; only needed when `LLM_ADAPTER=anthropic`. |
+| `DEMO_BASIC_AUTH_USER` | Optional; defaults to `demo`. |
+| `DEMO_BASIC_AUTH_PASSWORD` | **Required on Vercel.** When unset (e.g., locally), middleware is a no-op. |
+
+`vercel.json` pins the framework, the install command (`pnpm install
+--frozen-lockfile`), and the build command, which runs Drizzle migrations
+and the seed before `next build`. That keeps the Neon schema and the
+`lead-qualification` process definition in sync on every deploy.
+
+### Re-deploy / rotate creds
+
+```bash
+# from a machine with `vercel login` already done:
+vercel env rm DEMO_BASIC_AUTH_PASSWORD production
+vercel env add DEMO_BASIC_AUTH_PASSWORD production   # paste new value
+vercel deploy --prod
+```
+
 ## Pre-commit hook
 
 `pnpm install` wires up a husky pre-commit hook that runs:
