@@ -44,7 +44,8 @@ empty Postgres database, then run `pnpm db:migrate && pnpm db:seed && pnpm dev`.
 | `pnpm build` / `pnpm start` | Production build / start |
 | `pnpm lint` / `pnpm lint:fix` / `pnpm format` | Biome |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` / `pnpm test:watch` | Vitest |
+| `pnpm test` / `pnpm test:watch` | Vitest (unit + integration) |
+| `pnpm test:e2e` | Playwright happy-path against a built Next.js server |
 | `pnpm verify` | Lint + typecheck + test + build (matches CI) |
 
 ## Backend skeleton (SWE-4)
@@ -135,6 +136,42 @@ journey end-to-end against a real Postgres. It is `describe.skipIf(!DATABASE_URL
 so contributors can run `pnpm test` without a database, and CI runs it against the
 `postgres:16` service container.
 
+## Frontend skeleton (SWE-5)
+
+The web UI is the operator's view of the v1 lead-qualification journey. It is
+intentionally low-fi — component boundaries are aligned to the eventual design
+system, but styling is placeholder.
+
+### Pages
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Intake form. Paste raw inbound text, hit **Run**. A server action calls `handleCreateRun` and redirects to the run viewer. |
+| `/runs/[runId]` | Run viewer. Renders the input, the step timeline, and an editable form whenever the active step is the current human gate. |
+| `/runs` | Run history. Lists the most recent 50 runs with status badges and short input previews. |
+
+The two human gates are client components (`ApproveQualificationForm`,
+`ApproveReplyForm`) that POST to `/api/runs/:id/steps/:stepId/approve` and call
+`router.refresh()` on success so the server-rendered timeline reflects the new
+state without a full reload.
+
+### End-to-end smoke test
+
+`tests/e2e/happy-path.spec.ts` is a single Playwright spec that walks the full
+journey in Chromium: open the intake page → paste a sample message → run → edit a
+field at the qualification gate → approve → approve the reply → assert the
+dispatch confirmation and the `completed` status badge → confirm the run shows up
+in `/runs`. Run locally with:
+
+```bash
+pnpm exec playwright install --with-deps chromium  # one-time
+pnpm dev:up                                        # in another terminal
+pnpm test:e2e
+```
+
+CI runs it against the production build (`pnpm build && pnpm next start`) so it
+exercises the same code path as a deployed app.
+
 ## Pre-commit hook
 
 `pnpm install` wires up a husky pre-commit hook that runs:
@@ -147,8 +184,8 @@ Bypass with `git commit --no-verify` only if you know what you are doing.
 ## CI
 
 Every push to `main` and every pull request runs `.github/workflows/ci.yml`:
-spin up Postgres → install → migrate → lint → typecheck → test → build. Merges to
-`main` require green CI.
+spin up Postgres → install → migrate → lint → typecheck → test → build → seed →
+Playwright e2e. Merges to `main` require green CI.
 
 ## Repo layout
 
@@ -160,7 +197,7 @@ src/processes/       Process definitions (lead-qualification)
 src/api/             Framework-agnostic API handlers (called by app/api/* routes)
 drizzle/             Generated SQL migrations
 scripts/             tsx-runnable migration + seed scripts
-tests/               Vitest tests (smoke + integration/)
+tests/               Vitest tests (smoke + integration/) and Playwright (e2e/)
 public/              Static assets
 .github/workflows/   CI pipelines
 biome.json           Lint + format config

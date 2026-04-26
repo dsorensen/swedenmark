@@ -1,83 +1,86 @@
-import Image from "next/image";
+import { handleCreateRun } from "@/src/api/handlers";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+const SAMPLE = `Hi, I'm Maya Chen, CTO at Northwind Logistics. Saw your demo on LinkedIn.
+We're a team of 40 evaluating ways to automate inbound RFP triage and want pricing for a pilot this week.`;
+
+async function createRunAction(formData: FormData) {
+  "use server";
+  const rawText = String(formData.get("rawText") ?? "").trim();
+  if (!rawText) {
+    redirect("/?error=empty");
+  }
+  const result = await handleCreateRun({
+    processSlug: "lead-qualification",
+    input: { rawText },
+  });
+  if (result.status !== 201) {
+    const code =
+      (result.body as { error?: { code?: string } } | undefined)?.error?.code ?? "unknown";
+    redirect(`/?error=${encodeURIComponent(code)}`);
+  }
+  const runId = (result.body as { run: { id: string } }).run.id;
+  redirect(`/runs/${runId}`);
+}
+
+export default async function IntakePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <header className="mb-8 flex items-baseline justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">New lead intake</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Paste an inbound message. The system will extract structured fields, score fit, and
+            pause for your review at each gate.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link href="/runs" className="text-sm text-neutral-600 underline-offset-4 hover:underline">
+          Run history →
+        </Link>
+      </header>
+
+      {error ? (
+        <div
+          className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          role="alert"
         >
-          <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          Could not start a run ({error}). Try again.
+        </div>
+      ) : null}
+
+      <form action={createRunAction} className="space-y-4">
+        <label htmlFor="rawText" className="block text-sm font-medium">
+          Inbound message
+        </label>
+        <textarea
+          id="rawText"
+          name="rawText"
+          required
+          rows={12}
+          defaultValue={SAMPLE}
+          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+          placeholder="Paste raw inbound email, form submission, or DM..."
+        />
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-neutral-500">
+            Tip: edit the sample text or replace it with a real message.
+          </p>
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2"
+          >
+            Run
+          </button>
+        </div>
+      </form>
+    </main>
   );
 }
