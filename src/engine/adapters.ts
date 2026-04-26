@@ -34,7 +34,7 @@ export interface QualifyResult {
   rationale: string;
 }
 
-function fixtureExtract(rawText: string): LeadFields {
+export function fixtureExtract(rawText: string): LeadFields {
   const lower = rawText.toLowerCase();
   const sourceGuess = lower.includes("linkedin")
     ? "linkedin"
@@ -42,9 +42,12 @@ function fixtureExtract(rawText: string): LeadFields {
       ? "web_form"
       : "email";
 
+  // `.`, `,`, and newline are excluded from the company-name class so the
+  // greedy match stops at the first sentence terminator instead of running
+  // across sentence boundaries (see SWE-7).
   const companyMatch =
-    rawText.match(/\b(?:from|at)\s+([A-Z][A-Za-z0-9 .&-]{2,40})\b/) ??
-    rawText.match(/([A-Z][A-Za-z0-9 .&-]{2,40})\s+team\b/i);
+    rawText.match(/\b(?:from|at)\s+([A-Z][A-Za-z0-9 &-]{2,40})\b/) ??
+    rawText.match(/([A-Z][A-Za-z0-9 &-]{2,40})\s+team\b/i);
   const company = (companyMatch?.[1] ?? "Unknown Co").trim();
 
   const contactMatch =
