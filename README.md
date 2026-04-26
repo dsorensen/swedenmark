@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Swedenmark
 
-## Getting Started
+Internal product. v1 vertical slice: turn an unstructured business process into structured artifacts and a recommended next action, with a human in the loop at every gate.
 
-First, run the development server:
+See the v1 design doc on the engineering kickoff issue for the product and architecture rationale.
+
+## Stack
+
+- **Runtime:** TypeScript on Next.js 15 (App Router) — UI + API in one repo, one deploy
+- **UI:** React 19 + Tailwind v4
+- **Datastore:** Postgres (added in SWE-4)
+- **LLM:** Anthropic Claude (added in SWE-4)
+- **Tests:** Vitest (unit), Playwright (added in SWE-5)
+- **Lint/format:** Biome
+- **CI:** GitHub Actions
+
+## Onboarding (under 5 minutes)
+
+Prereqs: Node 20.11+, pnpm 9.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+git clone git@github.com:dsorensen/swedenmark.git
+cd swedenmark
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 — you should see the default Next.js page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Common scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Run the app locally with hot reload |
+| `pnpm build` | Production build |
+| `pnpm start` | Run the production build |
+| `pnpm lint` | Biome lint + format check |
+| `pnpm lint:fix` | Biome lint + format with auto-fix |
+| `pnpm format` | Format files in place |
+| `pnpm typecheck` | TypeScript `--noEmit` check |
+| `pnpm test` | Run Vitest once |
+| `pnpm test:watch` | Run Vitest in watch mode |
+| `pnpm verify` | Lint + typecheck + test + build (matches CI) |
 
-## Learn More
+## Pre-commit hook
 
-To learn more about Next.js, take a look at the following resources:
+`pnpm install` wires up a husky pre-commit hook that runs:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `lint-staged` — Biome auto-fix on staged files
+2. `pnpm typecheck` — full project typecheck
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Bypass with `git commit --no-verify` only if you know what you are doing.
 
-## Deploy on Vercel
+## CI
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Every push to `main` and every pull request runs `.github/workflows/ci.yml`:
+lint → typecheck → test → build. Merges to `main` require green CI.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Repo layout
+
+```
+app/                 Next.js App Router (pages, layouts, route handlers)
+public/              Static assets
+tests/               Vitest unit/integration tests
+.github/workflows/   CI pipelines
+biome.json           Lint + format config
+vitest.config.ts     Test runner config
+```
+
+Single-package layout. We will only move to a workspace if a second deployable
+artifact (worker, second app) is justified — see the design doc rationale.
+
+## Adding a test
+
+Put `*.test.ts` (or `*.spec.ts`) anywhere outside `node_modules`/`.next`.
+Smallest example: `tests/smoke.test.ts`.
+
+## Troubleshooting
+
+- **`pnpm` not found**: install via `npm install -g pnpm@9` (corepack works too on most setups).
+- **`pnpm install` complains about Node**: upgrade to Node 20.11+.
+- **CI fails on a green local run**: run `pnpm verify` — it runs the exact CI sequence.
